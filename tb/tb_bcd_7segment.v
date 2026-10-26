@@ -1,61 +1,90 @@
+
 `timescale 1ns/1ps
 
 module tb_bcd_7segment;
 
-    reg  [3:0] bcd;
-    wire [6:0] seg;
-    reg  [6:0] expected;
+    reg  [3:0] ui_in;
+    wire [7:0] uo_out;
+    reg  [7:0] expected;
 
     integer i;
     integer errors;
+    integer tests;
 
     bcd_7segment dut (
-        .bcd(bcd),
-        .seg(seg)
+        .ui_in(ui_in),
+        .uo_out(uo_out)
     );
 
+    task check_value;
+        input [3:0] value;
+        input [7:0] expected_value;
+        begin
+            ui_in = value;
+            #10;
+            tests = tests + 1;
+
+            if (uo_out !== expected_value) begin
+                $display("FAIL: ui_in=%h, uo_out=%b, expected=%b",
+                         ui_in, uo_out, expected_value);
+                errors = errors + 1;
+            end
+            else begin
+                $display("PASS: ui_in=%h, uo_out=%b",
+                         ui_in, uo_out);
+            end
+        end
+    endtask
+
     initial begin
+        errors = 0;
+        tests = 0;
+        ui_in = 4'd0;
+
         $dumpfile("sim/bcd_7segment.vcd");
         $dumpvars(0, tb_bcd_7segment);
 
-        errors = 0;
+        // TC-01 den TC-16: Kiem tra tat ca ma dau vao 0 den 15
+        check_value(4'd0,  8'b01000000);
+        check_value(4'd1,  8'b01111001);
+        check_value(4'd2,  8'b00100100);
+        check_value(4'd3,  8'b00110000);
+        check_value(4'd4,  8'b00011001);
+        check_value(4'd5,  8'b00010010);
+        check_value(4'd6,  8'b00000010);
+        check_value(4'd7,  8'b01111000);
+        check_value(4'd8,  8'b00000000);
+        check_value(4'd9,  8'b00010000);
+        check_value(4'd10, 8'b11111111);
+        check_value(4'd11, 8'b11111111);
+        check_value(4'd12, 8'b11111111);
+        check_value(4'd13, 8'b11111111);
+        check_value(4'd14, 8'b11111111);
+        check_value(4'd15, 8'b11111111);
 
-        for (i = 0; i < 16; i = i + 1) begin
-            bcd = i;
+        // TC-17 den TC-21: Kiem tra lai mot so gia tri
+        check_value(4'd9,  8'b00010000);
+        check_value(4'd10, 8'b11111111);
+        check_value(4'd15, 8'b11111111);
+        check_value(4'd0,  8'b01000000);
+        check_value(4'd1,  8'b01111001);
 
-            case (i)
-                0: expected = 7'b0000001;
-                1: expected = 7'b1001111;
-                2: expected = 7'b0010010;
-                3: expected = 7'b0000110;
-                4: expected = 7'b1001100;
-                5: expected = 7'b0100100;
-                6: expected = 7'b0100000;
-                7: expected = 7'b0001111;
-                8: expected = 7'b0000000;
-                9: expected = 7'b0000100;
-                default: expected = 7'b1111111;
-            endcase
+        // TC-22: Chuyen tu ma hop le 9 sang ma khong hop le 10
+        check_value(4'd9,  8'b00010000);
+        check_value(4'd10, 8'b11111111);
 
-            #10;
+        // TC-23: Chuyen tu ma khong hop le 10 sang ma hop le 8
+        check_value(4'd10, 8'b11111111);
+        check_value(4'd8,  8'b00000000);
 
-            if (seg !== expected) begin
-                $display("FAIL: BCD=%h, seg=%b, expected=%b",
-                         bcd, seg, expected);
-                errors = errors + 1;
-            end else begin
-                $display("PASS: BCD=%h, seg=%b", bcd, seg);
-            end
-        end
-
-        $display("-----------------------");
-        $display("Total tests: 16");
+        $display("------------------------------");
+        $display("Total tests: %0d", tests);
         $display("Errors: %0d", errors);
 
         if (errors == 0)
             $display("RESULT: ALL TESTS PASSED");
         else
-            $display("RESULT: TESTS FAILED");
+            $display("RESULT: SOME TESTS FAILED");
 
         $finish;
     end
